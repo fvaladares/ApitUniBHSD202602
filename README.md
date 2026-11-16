@@ -80,3 +80,52 @@ Para o **Projeto A4**, o grupo deverá refatorar este monolito em uma **arquitet
      ```
 
 Após essa divisão, seu código estará preparado para escalar, integrando facilmente novas funcionalidades de segurança, como um proxy reverso Nginx, de forma totalmente estruturada e profissional.
+
+## Atividade complementar — Sistemas Distribuídos com Nginx
+
+Nesta atividade, o projeto foi organizado em pacotes e recebeu o Nginx como intermediário entre o cliente e a API FastAPI.
+
+### 1. Organização dos arquivos
+
+O código foi separado por responsabilidade:
+
+- `app/main.py`: inicialização da API.
+- `app/database.py`: conexão com o banco e criação das tabelas.
+- `app/models.py`: modelos de dados.
+- `app/routes/registros.py`: rotas de cadastro, consulta, atualização e exclusão.
+- `nginx/nginx.conf`: configuração do Nginx.
+
+### 2. Instalação do Nginx
+
+No GitHub Codespaces, foi instalado o Nginx utilizando os comandos `sudo apt-get update` e `sudo apt-get install -y nginx`.
+
+### 3. Configuração do Nginx
+
+O Nginx foi configurado para receber requisições na porta 8080 e encaminhá-las para duas instâncias da API FastAPI, nas portas 8000 e 8001.
+
+Foram implementadas as seguintes funcionalidades:
+
+- **Proxy reverso:** recebe as requisições dos clientes e encaminha para a API.
+- **Balanceamento de carga:** distribui as requisições entre as duas instâncias.
+- **Cache HTTP:** armazena temporariamente respostas de consultas GET.
+- **Limitação de requisições:** configura um limite de 5 requisições por segundo, permitindo pequenos picos de acesso.
+
+### 4. Como executar
+
+Para iniciar a primeira instância da API, utilize `uv run uvicorn app.main:app --reload`.
+
+Em outro terminal, inicie a segunda instância com `uv run uvicorn app.main:app --host 127.0.0.1 --port 8001`.
+
+Depois, teste a configuração do Nginx com `sudo nginx -t -c "$PWD/nginx/nginx.conf"` e inicie-o com `sudo nginx -c "$PWD/nginx/nginx.conf"`.
+
+A documentação da API pode ser acessada pelo endereço `http://localhost:8080/docs`.
+
+### 5. Testes realizados
+
+Os testes foram realizados com sucesso no GitHub Codespaces:
+
+- A documentação da API foi acessada através do Nginx.
+- Na primeira consulta, o cabeçalho `X-Cache-Status` apresentou `MISS`, indicando que a resposta ainda não estava armazenada.
+- Na segunda consulta, apresentou `HIT`, comprovando o funcionamento do cache.
+- Duas requisições POST foram encaminhadas para instâncias diferentes: uma na porta 8001 e outra na porta 8000, comprovando o balanceamento de carga.
+
