@@ -1,12 +1,63 @@
 import sqlite3
-from fastapi import FastAPI, HTTPException
+import time
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
+from prometheus_fastapi_instrumentator import Instrumentator
+from loguru import logger
 
 app = FastAPI(
     title="API de Gerenciamento - Projeto A3",
     description="Template inicial integrando FastAPI, SQLite e validações Pydantic.",
     version="1.0.0"
 )
+# ==========================================
+# OBSERVABILIDADE - PROMETHEUS E LOGURU
+# ==========================================
+
+# Instrumentação das métricas da API
+Instrumentator(
+    excluded_handlers=["/metrics"]
+).instrument(app).expose(app, endpoint="/metrics")
+
+
+# Configuração dos logs
+logger.add(
+    "logs/api.log",
+    rotation="10 MB",
+    retention="7 days",
+    level="INFO"
+)
+
+
+# Middleware para registrar as requisições HTTP
+@app.middleware("http")
+async def registrar_requisicoes(request: Request, call_next):
+    inicio = time.perf_counter()
+
+    try:
+        response = await call_next(request)
+    except Exception:
+        logger.exception(
+            f"{request.method} {request.url.path} - Erro interno"
+        )
+        raise
+
+    duracao = time.perf_counter() - inicio
+
+    mensagem = (
+        f"{request.method} {request.url.path} | "
+        f"Status: {response.status_code} | "
+        f"Latência: {duracao * 1000:.2f} ms"
+    )
+
+    if response.status_code >= 500:
+        logger.error(mensagem)
+    elif response.status_code >= 400:
+        logger.warning(mensagem)
+    else:
+        logger.info(mensagem)
+
+    return response
 
 
 # ==========================================
